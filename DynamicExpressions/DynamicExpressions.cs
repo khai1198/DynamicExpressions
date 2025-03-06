@@ -82,9 +82,14 @@ namespace DynamicExpressions
 
         private static Expression RobustEquals(MemberExpression prop, ConstantExpression constant)
         {
-            if (prop.Type == typeof(bool) && bool.TryParse(constant.Value.ToString(), out var val))
+            if (prop.Type == typeof(bool?) && bool.TryParse(constant.Value.ToString(), out var val))
             {
-                return Expression.Equal(prop, Expression.Constant(val));
+              var constantNullable = Expression.Convert(Expression.Constant(val), prop.Type);
+              return Expression.Equal(prop, constantNullable);
+            }
+            else if (prop.Type == typeof(bool) && bool.TryParse(constant.Value.ToString(), out val))
+            {
+              return Expression.Equal(prop, Expression.Constant(val));
             }
             if (IsNullableType(prop.Type))
             {
