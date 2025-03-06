@@ -86,7 +86,17 @@ namespace DynamicExpressions
             {
                 return Expression.Equal(prop, Expression.Constant(val));
             }
+            if (IsNullableType(prop.Type))
+            {
+              var constantNullable = Expression.Convert(constant, prop.Type);
+              return Expression.Equal(prop, constantNullable);
+            }
             return Expression.Equal(prop, constant);
+        }
+
+        private static bool IsNullableType(Type t)
+        {
+          return t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
 
         private static Expression GetContainsMethodCallExpression(MemberExpression prop, ConstantExpression constant)
