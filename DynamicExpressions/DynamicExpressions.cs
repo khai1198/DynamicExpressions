@@ -60,8 +60,8 @@ namespace DynamicExpressions
             return op switch
             {
                 FilterOperator.Equals => RobustEquals(prop, constant),
-                FilterOperator.GreaterThan => Expression.GreaterThan(prop, constant),
-                FilterOperator.LessThan => Expression.LessThan(prop, constant),
+                FilterOperator.GreaterThan => RobustGreaterThan(prop, constant),
+                FilterOperator.LessThan => RobustLessThan(prop, constant),
                 FilterOperator.ContainsIgnoreCase => Expression.Call(prop, _stringContainsMethodIgnoreCase, PrepareConstant(constant), Expression.Constant(StringComparison.OrdinalIgnoreCase)),
                 FilterOperator.Contains => GetContainsMethodCallExpression(prop, constant),
                 FilterOperator.NotContains => Expression.Not(GetContainsMethodCallExpression(prop, constant)),
@@ -72,36 +72,76 @@ namespace DynamicExpressions
                 FilterOperator.StartsWith => Expression.Call(prop, _startsWithMethod, PrepareConstant(constant)),
                 FilterOperator.EndsWith => Expression.Call(prop, _endsWithMethod, PrepareConstant(constant)),
                 FilterOperator.DoesntEqual => Expression.Not(RobustEquals(prop, constant)),
-                FilterOperator.GreaterThanOrEqual => Expression.GreaterThanOrEqual(prop, constant),
-                FilterOperator.LessThanOrEqual => Expression.LessThanOrEqual(prop, constant),
+                FilterOperator.GreaterThanOrEqual => RobustGreaterThanOrEqual(prop, constant),
+                FilterOperator.LessThanOrEqual => RobustLessThanOrEqual(prop, constant),
                 FilterOperator.IsEmpty => Expression.Call(_isNullOrEmtpyMethod, prop),
                 FilterOperator.IsNotEmpty => Expression.Not(Expression.Call(_isNullOrEmtpyMethod, prop)),
                 _ => throw new NotImplementedException()
             };
         }
 
+        private static BinaryExpression RobustLessThanOrEqual(MemberExpression prop, ConstantExpression constant)
+        {
+            if (IsNullableType(prop.Type))
+            {
+                var constantNullable = Expression.Convert(constant, prop.Type);
+                return Expression.LessThanOrEqual(prop, constantNullable);
+            }
+            return Expression.LessThanOrEqual(prop, constant);
+        }
+
+        private static BinaryExpression RobustGreaterThanOrEqual(MemberExpression prop, ConstantExpression constant)
+        {
+            if (IsNullableType(prop.Type))
+            {
+                var constantNullable = Expression.Convert(constant, prop.Type);
+                return Expression.GreaterThanOrEqual(prop, constantNullable);
+            }
+            return Expression.GreaterThanOrEqual(prop, constant);
+        }
+
+        private static BinaryExpression RobustGreaterThan(MemberExpression prop, ConstantExpression constant)
+        {
+            if (IsNullableType(prop.Type))
+            {
+                var constantNullable = Expression.Convert(constant, prop.Type);
+                return Expression.GreaterThan(prop, constantNullable);
+            }
+            return Expression.GreaterThan(prop, constant);
+        }
+
+        private static BinaryExpression RobustLessThan(MemberExpression prop, ConstantExpression constant)
+        {
+            if (IsNullableType(prop.Type))
+            {
+                var constantNullable = Expression.Convert(constant, prop.Type);
+                return Expression.LessThan(prop, constantNullable);
+            }
+            return Expression.LessThan(prop, constant);
+        }
+
         private static Expression RobustEquals(MemberExpression prop, ConstantExpression constant)
         {
             if (prop.Type == typeof(bool?) && bool.TryParse(constant.Value.ToString(), out var val))
             {
-              var constantNullable = Expression.Convert(Expression.Constant(val), prop.Type);
-              return Expression.Equal(prop, constantNullable);
+                var constantNullable = Expression.Convert(Expression.Constant(val), prop.Type);
+                return Expression.Equal(prop, constantNullable);
             }
             else if (prop.Type == typeof(bool) && bool.TryParse(constant.Value.ToString(), out val))
             {
-              return Expression.Equal(prop, Expression.Constant(val));
+                return Expression.Equal(prop, Expression.Constant(val));
             }
             if (IsNullableType(prop.Type))
             {
-              var constantNullable = Expression.Convert(constant, prop.Type);
-              return Expression.Equal(prop, constantNullable);
+                var constantNullable = Expression.Convert(constant, prop.Type);
+                return Expression.Equal(prop, constantNullable);
             }
             return Expression.Equal(prop, constant);
         }
 
         private static bool IsNullableType(Type t)
         {
-          return t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>);
+            return t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
 
         private static Expression GetContainsMethodCallExpression(MemberExpression prop, ConstantExpression constant)
